@@ -11,6 +11,10 @@ class ActivationFunction(object):
     @abc.abstractmethod
     def f_der(self, input: float, output: float) -> float:
         return
+    
+    @abc.abstractmethod
+    def f_der_exp(self, expected: float, input: float, output: float) -> float:
+        return
 
 class ReLU(ActivationFunction):
     def f(self, input: float) -> float:
@@ -32,6 +36,17 @@ class Sigmoid(ActivationFunction):
         
     def f_der(self, input: float, output: float) -> float:
         return output*(1 - output)
+    
+class SigmoidBeforeCE(ActivationFunction):
+    def f(self, input: float) -> float:
+        exp_x = math.exp(input)
+        return exp_x/(1 + exp_x)
+        
+    def f_der(self, input: float, output: float) -> float:
+        raise Exception('Não deve ser chamado')
+    
+    def f_der_exp(self, expected: float, input, output: float):
+        return output - expected
 
 class Linear(ActivationFunction):
     def f(self, input: float) -> float:

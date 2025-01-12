@@ -136,10 +136,19 @@ class MLP:
         bias_gradient: list[np.ndarray] = []
         
         loss_der = self.loss.loss_der(output, expected)
-        grad_activation = loss_der
+        flag = "None"
+        if type(loss_der) == str:
+            flag = loss_der
+        else:
+            grad_activation = loss_der
         
         for L in reversed(range(self.depth)):
-            grad_intermediate: np.ndarray = grad_activation*np.vectorize(pyfunc=self.activations[L].f_der)(intermediate_tensor[L], activation_tensor[L+1])
+            if flag == "FlagEXP":
+                grad_intermediate: np.ndarray = np.vectorize(pyfunc=self.activations[L].f_der_exp)(expected, None, output)
+                flag = "None"
+            else:
+                grad_intermediate: np.ndarray = grad_activation*np.vectorize(pyfunc=self.activations[L].f_der)(intermediate_tensor[L], activation_tensor[L+1])
+                
             grad_weight_L = []
             for i in range(len(grad_intermediate)):
                 grad_int_i: float = grad_intermediate[i]

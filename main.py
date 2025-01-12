@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 from src.MLP import MLP, InitializationType
-from src.activation_functions import ReLU, Sigmoid, Linear
-from src.loss_functions import MSE
+from src.activation_functions import ReLU, Sigmoid, SigmoidBeforeCE, Linear
+from src.loss_functions import MSE, CrossEntropy, CrossEntropyAfterSigmoid
 
 def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Carregar o dataset
@@ -14,9 +14,9 @@ def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
         labels.append(label)
     features=pd.DataFrame(features)
     labels=pd.DataFrame(labels)
-    labels["Iris-setosa"] = labels[0].map({"Iris-setosa": 1, "Iris-versicolor": 0, "Iris-virginica": 0})
-    labels["Iris-versicolor"] = labels[0].map({"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 0})
-    labels["Iris-virginica"] = labels[0].map({"Iris-setosa": 0, "Iris-versicolor": 0, "Iris-virginica": 1})
+    labels["Iris-setosa"] = labels[0].map({"Iris-setosa": 1.0, "Iris-versicolor": 0.0, "Iris-virginica": 0.0})
+    labels["Iris-versicolor"] = labels[0].map({"Iris-setosa": 0.0, "Iris-versicolor": 1.0, "Iris-virginica": 0.0})
+    labels["Iris-virginica"] = labels[0].map({"Iris-setosa": 0.0, "Iris-versicolor": 0.0, "Iris-virginica": 1.0})
     labels = labels.drop(labels=0, axis=1)
 
     return features, labels
@@ -82,18 +82,18 @@ def classification_problem():
     
     # Define os hiperparâmetros da MLP
     # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    mlp = MLP(4, [5, 5], 3, [ReLU(), ReLU(), Sigmoid()], MSE())
+    mlp = MLP(4, [5, 5], 3, [ReLU(), ReLU(), Sigmoid()], CrossEntropy())
     mlp.initialize(InitializationType.gaussian)
     loss = 9999
         
-    lr = 0.1
+    lr = 0.02
     n = 30
     while True:
         loss, _ = mlp.eval(features_train, labels_train)
         print(loss)
-        if loss < 0.015:
+        if loss < 0.11:
             break
-        for _i in range(400):
+        for _i in range(100):
             loss = mlp.train(features_train, labels_train, sample="Minibatch", learning_rate=lr, n=n)
     train_loss, train_accuracy = mlp.eval(features_train, labels_train, kind="Classification")
     print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
@@ -135,7 +135,7 @@ def regression_problem():
         print(loss)
         if loss < 0.004:
             break
-        for _i in range(400):
+        for _i in range(1):
             loss = mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=n)
             
     train_loss, train_accuracy = mlp.eval(features_train, target_train, kind="Regression", tmax=tmax, tmin=tmin)
@@ -144,7 +144,7 @@ def regression_problem():
     print(f"val loss: {val_loss} val accuracy: {val_accuracy}")
 
 def main():
-    regression_problem()
+    classification_problem()
 
 if __name__ == "__main__":
     main()
