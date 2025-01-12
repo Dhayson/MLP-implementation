@@ -1,12 +1,12 @@
 import numpy as np
 import pandas as pd
 from src.MLP import MLP, InitializationType
-from src.activation_functions import ReLU, Sigmoid, Linear, Tahn, LeakyReLU
-from src.loss_functions import MSE, MAE
+from src.activation_functions import ReLU, Sigmoid, Linear
+from src.loss_functions import MSE
 
-def main():
+def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Carregar o dataset
-    data = np.genfromtxt("dataset/bezdekIris.data", delimiter=',', dtype=None, encoding='utf-8')
+    data = np.genfromtxt("dataset_iris/bezdekIris.data", delimiter=',', dtype=None, encoding='utf-8')
     features = []
     labels = []
     for i1, i2, i3, i4, label in data:
@@ -18,45 +18,133 @@ def main():
     labels["Iris-versicolor"] = labels[0].map({"Iris-setosa": 0, "Iris-versicolor": 1, "Iris-virginica": 0})
     labels["Iris-virginica"] = labels[0].map({"Iris-setosa": 0, "Iris-versicolor": 0, "Iris-virginica": 1})
     labels = labels.drop(labels=0, axis=1)
+
+    return features, labels
+
+def load_student_dataset() -> pd.DataFrame:
+    # Carregar o dataset
+    data = pd.read_csv("dataset_students/student-mat.csv", sep=";")
+    data["school"] = data["school"].map({"GP":1, "MS":0})
+    data["sex"] = data["sex"].map({"F":1, "M":0})
+    data["address"] = data["address"].map({"U":1, "R":0})
+    data["famsize"] = data["famsize"].map({"GT3":1, "LE3":0})
+    data["Pstatus"] = data["Pstatus"].map({"A":1, "T":0})
+    yes_no_columns = ["schoolsup", "famsup", "paid", "activities", "nursery", "higher", "internet", "romantic"]
+    def yes_no_to_int(x):
+        if x == "yes":
+            return 1
+        else:
+            return 0
+    data[yes_no_columns] = data[yes_no_columns].applymap(yes_no_to_int)
+    def check_for(x1, x2):
+        if x1 == x2:
+            return 1
+        else:
+            return 0
+        
+    data["Mjob_is_other"] = data["Mjob"].map(lambda x: check_for(x, "other"))
+    data["Mjob_is_services"] = data["Mjob"].map(lambda x: check_for(x, "services"))
+    data["Mjob_is_teacher"] = data["Mjob"].map(lambda x: check_for(x, "teacher"))
+    data["Mjob_is_at_home"] = data["Mjob"].map(lambda x: check_for(x, "at_home"))
+    data["Mjob_is_health"] = data["Mjob"].map(lambda x: check_for(x, "health"))
     
-    mlp = MLP(4, [4,3], 3, [Sigmoid(), Sigmoid(), Sigmoid()], MSE())
+    data["Fjob_is_other"] = data["Fjob"].map(lambda x: check_for(x, "other"))
+    data["Fjob_is_services"] = data["Fjob"].map(lambda x: check_for(x, "services"))
+    data["Fjob_is_teacher"] = data["Fjob"].map(lambda x: check_for(x, "teacher"))
+    data["Fjob_is_at_home"] = data["Fjob"].map(lambda x: check_for(x, "at_home"))
+    data["Fjob_is_health"] = data["Fjob"].map(lambda x: check_for(x, "health"))
+    
+    data["reason_is_course"] = data["reason"].map(lambda x: check_for(x, "course"))
+    data["reason_is_home"] = data["reason"].map(lambda x: check_for(x, "home"))
+    data["reason_is_reputation"] = data["reason"].map(lambda x: check_for(x, "reputation"))
+    data["reason_is_other"] = data["reason"].map(lambda x: check_for(x, "other"))
+    
+    data["guardian_is_mother"] = data["guardian"].map(lambda x: check_for(x, "mother"))
+    data["guardian_is_father"] = data["guardian"].map(lambda x: check_for(x, "father"))
+    data["guardian_is_other"] = data["guardian"].map(lambda x: check_for(x, "other"))
+
+    data = data.drop(labels=["Mjob", "Fjob", "reason", "guardian"], axis=1)
+    
+    return data
+
+def classification_problem():
+    features, labels = load_iris_dataset()
+    normalized = True
+    
+    if normalized:
+        features=(features-features.min())/(features.max()-features.min())
+        
+    # Dividir entre treino e validação
+    features_train = features.sample(frac=0.6)
+    labels_train = labels.loc[features_train.index]
+    features_val = features.drop(features_train.index)
+    labels_val = labels.loc[features_val.index]
+    
+    # Define os hiperparâmetros da MLP
+    # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
+    mlp = MLP(4, [5, 5], 3, [ReLU(), ReLU(), Sigmoid()], MSE())
     mlp.initialize(InitializationType.gaussian)
-    # for i in range(3):
-    #     for x in mlp.weight_tensor[i]:
-    #         print(*x, sep=" ")
-    #     for x in mlp.bias_tensor[i]:
-    #         print(x, end=" ")
-    #     print()
-    #     print()
-    # print()
-    # print(features, labels)
     loss = 9999
-    for i in features.index:
-        print(features.loc[i].to_numpy())
-        prediction = mlp.predict(features.loc[i].to_numpy())
-        print(prediction, labels.loc[i].to_numpy())
-        print()
+        
+    lr = 0.1
+    n = 30
     while True:
-        for i in range(200):
-            loss = mlp.train(features, labels, sample="Minibatch", n=30)
-            if loss < 0.03:
-                break
+        loss, _ = mlp.eval(features_train, labels_train)
         print(loss)
-        if loss < 0.05:
+        if loss < 0.015:
             break
-    for i in features.index:
-        print(features.loc[i].to_numpy())
-        prediction = mlp.predict(features.loc[i].to_numpy())
-        print(prediction, labels.loc[i].to_numpy())
-        print()
-        # print(f"loss: {mlp.loss.loss(prediction, labels.loc[i].to_numpy())}")
-        # print(f"loss derivative: {mlp.loss.loss_der(prediction, labels.loc[i].to_numpy())}")
-        # loss, output, activate, intermediate = mlp.forward_propagate(features.loc[i].to_numpy(), labels.loc[i].to_numpy())
-        # grad_w, grad_b = mlp.backward_propagation(output, labels.loc[i].to_numpy(), activate, intermediate)
-        # print(grad_b)
-        # print(grad_w)
+        for _i in range(400):
+            loss = mlp.train(features_train, labels_train, sample="Minibatch", learning_rate=lr, n=n)
+    train_loss, train_accuracy = mlp.eval(features_train, labels_train, kind="Classification")
+    print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
+    val_loss, val_accuracy = mlp.eval(features_val, labels_val, kind="Classification")
+    print(f"val loss: {val_loss} val accuracy: {val_accuracy}")
 
     
+def regression_problem():
+    dataset = load_student_dataset()
+    set_target = ["G3"]
+    
+    
+    tmax = dataset[set_target].max()
+    tmin  = dataset[set_target].min()
+    normalized = True
+    if normalized:
+        dataset=(dataset-dataset.min())/(dataset.max()-dataset.min())
+        
+    
+    target = dataset[set_target]
+    features = dataset.drop(set_target, axis=1)
+    
+    # Dividir entre treino e validação
+    features_train = features.sample(frac=0.6)
+    target_train = target.loc[features_train.index]
+    features_val = features.drop(features_train.index)
+    target_val = target.loc[features_val.index]
+    
+    # Define os hiperparâmetros da MLP
+    # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
+    mlp = MLP(45, [16, 16, 16], 1, [ReLU(), ReLU(), ReLU(), Linear()], MSE())
+    mlp.initialize(InitializationType.gaussian)
+    loss = 9999
+        
+    lr = 0.1
+    n = 90
+    while True:
+        loss, _ = mlp.eval(features_train, target_train)
+        print(loss)
+        if loss < 0.004:
+            break
+        for _i in range(400):
+            loss = mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=n)
+            
+    train_loss, train_accuracy = mlp.eval(features_train, target_train, kind="Regression", tmax=tmax, tmin=tmin)
+    print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
+    val_loss, val_accuracy = mlp.eval(features_val, target_val, kind="Regression", tmax=tmax, tmin=tmin)
+    print(f"val loss: {val_loss} val accuracy: {val_accuracy}")
+
+def main():
+    regression_problem()
 
 if __name__ == "__main__":
     main()

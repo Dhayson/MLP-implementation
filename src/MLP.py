@@ -206,7 +206,7 @@ class MLP:
             
         return total_loss
     
-    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None"):
+    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None", tmax = None, tmin = None):
         assert len(dataset) == len(expected)
         n = len(dataset)
         
@@ -219,6 +219,10 @@ class MLP:
             total_gradient_b.append(np.zeros_like(self.bias_tensor[i], dtype='float64'))
         classification_pred = []
         classification_exp = []
+        
+        regression_pred = []
+        regression_exp = []
+        
         n_wrong = 0
         
         for i in dataset.index:
@@ -226,13 +230,23 @@ class MLP:
             if kind == "Classification":
                 classification_pred.append((np.argmax(output), i))
                 classification_exp.append(np.argmax(expected.loc[i].to_numpy()))
+            if kind == "Regression":
+                regression_pred.append((output*(tmax-tmin) + tmin, i))
+                regression_exp.append(expected.loc[i].to_numpy()*(tmax-tmin) + tmin)
             train_loss += self.loss.loss(output, expected.loc[i])
         
         if kind == "Classification":
             for i in range(len(classification_pred)):
                 if classification_pred[i][0] != classification_exp[i]:
                     n_wrong += 1
-                    print(f"missed: {classification_pred[i]} expected {classification_exp[i]}")
+                    # print(f"missed: {classification_pred[i]} expected {classification_exp[i]}")
+                    
+        if kind == "Regression":
+            for i in range(len(regression_pred)):
+                print(f"{regression_pred[i]}")
+                print("expected")
+                print(regression_exp[i])
+                print()
         
         train_loss /= n
         accuracy = (n-n_wrong)/n
