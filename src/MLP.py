@@ -30,11 +30,11 @@ class MLP:
         self.loss = loss
         
         self.layers_io = []
-        self.layers_io.append((self.input_dim, self.internal_layers_dims[0]))
-        for i in range(0,len(self.internal_layers_dims)-1):
-            self.layers_io.append((self.internal_layers_dims[i], self.internal_layers_dims[i+1]))
         i = len(self.internal_layers_dims) - 1
         if i >= 0:
+            self.layers_io.append((self.input_dim, self.internal_layers_dims[0]))
+            for j in range(0,len(self.internal_layers_dims)-1):
+                self.layers_io.append((self.internal_layers_dims[j], self.internal_layers_dims[j+1]))
             self.layers_io.append((self.internal_layers_dims[i], self.exit_dim))
         else:
             self.layers_io.append((self.input_dim, self.exit_dim))
@@ -113,7 +113,7 @@ class MLP:
         loss = self.loss.loss(output, expected)
         return (loss, output, activation_tensor, intermediate_tensor)
 
-    def backward_propagation(
+    def backward_propagate(
         self, 
         output: np.ndarray, 
         expected: np.ndarray, 
@@ -187,7 +187,7 @@ class MLP:
         total_loss = 0.0
         for i in dataset_sample.index:
             loss, output, activate, intermediate = self.forward_propagate(dataset_sample.loc[i].to_numpy(), expected_sample.loc[i].to_numpy())
-            grad_w, grad_b = self.backward_propagation(output, expected_sample.loc[i].to_numpy(), activate, intermediate)
+            grad_w, grad_b = self.backward_propagate(output, expected_sample.loc[i].to_numpy(), activate, intermediate)
             total_loss += loss
             for i in range(len(self.weight_tensor)):
                 total_gradient_w[i] += grad_w[i]
@@ -205,6 +205,40 @@ class MLP:
             self.bias_tensor[i] -= learning_rate*total_gradient_b[i]
             
         return total_loss
+    
+    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None"):
+        assert len(dataset) == len(expected)
+        n = len(dataset)
+        
+        train_loss = 0.0
+        total_gradient_w = []
+        for i in range(len(self.weight_tensor)):
+            total_gradient_w.append(np.zeros_like(self.weight_tensor[i], dtype='float64'))
+        total_gradient_b = []
+        for i in range(len(self.bias_tensor)):
+            total_gradient_b.append(np.zeros_like(self.bias_tensor[i], dtype='float64'))
+        classification_pred = []
+        classification_exp = []
+        n_wrong = 0
+        
+        for i in dataset.index:
+            output = self.predict(dataset.loc[i].to_numpy())
+            if kind == "Classification":
+                classification_pred.append((np.argmax(output), i))
+                classification_exp.append(np.argmax(expected.loc[i].to_numpy()))
+            train_loss += self.loss.loss(output, expected.loc[i])
+        
+        if kind == "Classification":
+            for i in range(len(classification_pred)):
+                if classification_pred[i][0] != classification_exp[i]:
+                    n_wrong += 1
+                    print(f"missed: {classification_pred[i]} expected {classification_exp[i]}")
+        
+        train_loss /= n
+        accuracy = (n-n_wrong)/n
+        
+        return train_loss, accuracy
+         
         
             
         
