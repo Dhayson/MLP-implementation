@@ -82,18 +82,18 @@ def classification_problem():
     
     # Define os hiperparâmetros da MLP
     # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    mlp = MLP(4, [5, 5], 3, [ReLU(), ReLU(), Sigmoid()], CrossEntropy())
+    mlp = MLP(4, [4, 4], 3, [Sigmoid(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid())
     mlp.initialize(InitializationType.gaussian)
     loss = 9999
         
-    lr = 0.02
-    n = 30
+    lr = 0.015
+    n = 40
     while True:
         loss, _ = mlp.eval(features_train, labels_train)
         print(loss)
-        if loss < 0.11:
+        if loss < 0.07:
             break
-        for _i in range(100):
+        for _i in range(300):
             loss = mlp.train(features_train, labels_train, sample="Minibatch", learning_rate=lr, n=n)
     train_loss, train_accuracy = mlp.eval(features_train, labels_train, kind="Classification")
     print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
@@ -133,12 +133,12 @@ def regression_problem():
     while True:
         loss, _ = mlp.eval(features_train, target_train)
         print(loss)
-        if loss < 0.004:
+        if loss < 0.006:
             break
-        for _i in range(1):
+        for _i in range(100):
             loss = mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=n)
             
-    train_loss, train_accuracy = mlp.eval(features_train, target_train, kind="Regression", tmax=tmax, tmin=tmin)
-    print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
-    val_loss, val_accuracy = mlp.eval(features_val, target_val, kind="Regression", tmax=tmax, tmin=tmin)
-    print(f"val loss: {val_loss} val accuracy: {val_accuracy}")
+    train_loss, train_rmse, train_mae = mlp.eval(features_train, target_train, kind="Regression", tmax=tmax, tmin=tmin)
+    print(f"train loss: {train_loss} train rmse: {train_rmse} train mae: {train_mae}")
+    val_loss, val_rmse, val_mae = mlp.eval(features_val, target_val, kind="Regression", tmax=tmax, tmin=tmin)
+    print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")

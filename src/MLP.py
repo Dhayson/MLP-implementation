@@ -215,7 +215,7 @@ class MLP:
             
         return total_loss
     
-    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None", tmax = None, tmin = None):
+    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None", tmax = None, tmin = None, do_print = False):
         assert len(dataset) == len(expected)
         n = len(dataset)
         
@@ -232,7 +232,6 @@ class MLP:
         regression_pred = []
         regression_exp = []
         
-        n_wrong = 0
         
         for i in dataset.index:
             output = self.predict(dataset.loc[i].to_numpy())
@@ -244,23 +243,41 @@ class MLP:
                 regression_exp.append(expected.loc[i].to_numpy()*(tmax-tmin) + tmin)
             train_loss += self.loss.loss(output, expected.loc[i])
         
+        n_wrong = 0
         if kind == "Classification":
             for i in range(len(classification_pred)):
                 if classification_pred[i][0] != classification_exp[i]:
                     n_wrong += 1
-                    # print(f"missed: {classification_pred[i]} expected {classification_exp[i]}")
-                    
+                    if do_print:
+                        print(f"missed: {classification_pred[i]} expected {classification_exp[i]}")       
+               
+        rmse = 0
+        mae = 0       
         if kind == "Regression":
             for i in range(len(regression_pred)):
-                print(f"{regression_pred[i]}")
-                print("expected")
-                print(regression_exp[i])
-                print()
+                if do_print:
+                    print(f"{regression_pred[i]}")
+                    print("expected")
+                    print(regression_exp[i])
+                    print()
+                l = regression_pred[i][0] - regression_exp[i]
+                rmse += l*l
+                mae += abs(l)
+                
         
         train_loss /= n
-        accuracy = (n-n_wrong)/n
         
-        return train_loss, accuracy
+        if kind == "Classification":
+            accuracy = (n-n_wrong)/n
+            return train_loss, accuracy
+        elif kind == "Regression":
+            rmse = sqrt(rmse.iloc[0])/n
+            mae = mae/n
+            return train_loss, rmse, mae
+        else:
+            return train_loss, None
+
+        
          
         
             
