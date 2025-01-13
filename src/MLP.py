@@ -5,6 +5,7 @@ from enum import Enum
 from collections.abc import Callable
 from src.activation_functions import ActivationFunction
 from src.loss_functions import LossFunction, MSE
+from src.optimization import TrainOptimization
 
 class InitializationType(Enum):
     zero = 0
@@ -18,16 +19,28 @@ class MLP:
     exit_dim: int
     activations: list[ActivationFunction]
     loss: LossFunction
+    train_optimization: TrainOptimization
     
     layers_io: list[tuple[int,int]]
     depth: int
     
-    def __init__(self, input_dim: int, internal_layers_dims: list[int], exit_dim: int, activations: list[ActivationFunction], loss: LossFunction = MSE()):
+    t: int = 0
+    
+    def __init__(
+        self, 
+        input_dim: int, 
+        internal_layers_dims: list[int], 
+        exit_dim: int, 
+        activations: list[ActivationFunction], 
+        loss: LossFunction = MSE(),
+        train_optimization: TrainOptimization = None
+    ):
         self.input_dim = input_dim
         self.internal_layers_dims = internal_layers_dims
         self.exit_dim = exit_dim
         self.activations = activations
         self.loss = loss
+        self.train_optimization = train_optimization
         
         self.layers_io = []
         i = len(self.internal_layers_dims) - 1
@@ -56,6 +69,9 @@ class MLP:
         self.bias_tensor = []
         for _input, output in self.layers_io:
             self.bias_tensor.append(np.zeros(shape=(output), dtype='float64'))
+            
+        if self.train_optimization != None:
+            self.train_optimization.initialize(layers_io = self.layers_io)
             
         assert self.depth == len(self.weight_tensor)
         assert self.depth == len(self.weight_tensor)
@@ -208,11 +224,21 @@ class MLP:
             total_gradient_w[i] /= n 
         for i in range(len(self.bias_tensor)):
             total_gradient_b[i] /= n
-        for i in range(len(self.weight_tensor)):
-            self.weight_tensor[i] -= learning_rate*total_gradient_w[i]
-        for i in range(len(self.bias_tensor)):
-            self.bias_tensor[i] -= learning_rate*total_gradient_b[i]
+        
+        
+        if self.train_optimization == None:
+            factor_w = total_gradient_w
+            factor_b = total_gradient_b
+        else:
+            factor_w, factor_b = self.train_optimization.apply(total_gradient_w, total_gradient_b, self.t)
             
+        for i in range(len(self.weight_tensor)):
+            self.weight_tensor[i] -= learning_rate*factor_w[i]
+        for i in range(len(self.bias_tensor)):
+            self.bias_tensor[i] -= learning_rate*factor_b[i]
+        
+        self.t += 1
+        
         return total_loss
     
     def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None", tmax = None, tmin = None, do_print = False):
@@ -271,7 +297,7 @@ class MLP:
             accuracy = (n-n_wrong)/n
             return train_loss, accuracy
         elif kind == "Regression":
-            rmse = sqrt(rmse.iloc[0])/n
+            rmse = sqrt(rmse.iloc[0]/n)
             mae = mae/n
             return train_loss, rmse, mae
         else:

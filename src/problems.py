@@ -3,6 +3,7 @@ import pandas as pd
 from src.MLP import MLP, InitializationType
 from src.activation_functions import ReLU, Sigmoid, SigmoidBeforeCE, Linear
 from src.loss_functions import MSE, CrossEntropy, CrossEntropyAfterSigmoid
+from src.optimization import Adagrad
 
 def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Carregar o dataset
@@ -82,16 +83,17 @@ def classification_problem():
     
     # Define os hiperparâmetros da MLP
     # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    mlp = MLP(4, [4, 4], 3, [Sigmoid(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid())
+    mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid(), Adagrad(-0.25, 100))
     mlp.initialize(InitializationType.gaussian)
     loss = 9999
         
-    lr = 0.015
+    lr = 0.5
     n = 40
     while True:
         loss, _ = mlp.eval(features_train, labels_train)
         print(loss)
-        if loss < 0.07:
+        print(mlp.t)
+        if loss < 0.004:
             break
         for _i in range(300):
             loss = mlp.train(features_train, labels_train, sample="Minibatch", learning_rate=lr, n=n)
@@ -99,6 +101,10 @@ def classification_problem():
     print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
     val_loss, val_accuracy = mlp.eval(features_val, labels_val, kind="Classification")
     print(f"val loss: {val_loss} val accuracy: {val_accuracy}")
+    if train_accuracy == val_accuracy and val_accuracy == 1.0:
+        print()
+        print(mlp.weight_tensor)
+        print(mlp.bias_tensor)
 
     
 def regression_problem():
@@ -124,19 +130,23 @@ def regression_problem():
     
     # Define os hiperparâmetros da MLP
     # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    mlp = MLP(45, [16, 16, 16], 1, [ReLU(), ReLU(), ReLU(), Linear()], MSE())
+    
+    # Foi utilizado -0.25, e não -0.5 como o valor que o resultado é exponenciado, para ter uma diminuição menos agressiva
+    # da taxa de aprendizado e, com isso, uma performance melhor
+    mlp = MLP(45, [10, 10], 1, [ReLU(), ReLU(), Linear()], MSE(), Adagrad(-0.25, 100))
     mlp.initialize(InitializationType.gaussian)
     loss = 9999
         
-    lr = 0.1
-    n = 90
+    lr = 0.6
+    batch_size = 40
     while True:
         loss, _ = mlp.eval(features_train, target_train)
         print(loss)
-        if loss < 0.006:
+        print(mlp.t)
+        if loss < 0.0005:
             break
         for _i in range(100):
-            loss = mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=n)
+            loss = mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=batch_size)
             
     train_loss, train_rmse, train_mae = mlp.eval(features_train, target_train, kind="Regression", tmax=tmax, tmin=tmin)
     print(f"train loss: {train_loss} train rmse: {train_rmse} train mae: {train_mae}")
