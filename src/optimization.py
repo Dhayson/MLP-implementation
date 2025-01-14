@@ -18,11 +18,15 @@ class Adagrad(TrainOptimization):
     s_b_tensor: list[np.ndarray]
     power: float
     delay_time: int
+    do_print: tuple[bool, int]
+    print_kind: str
     
-    def __init__(self, power = -0.5, delay_time = 100):
+    def __init__(self, power = -0.5, delay_time = 100, do_print = (False, 100), print_kind = "Full"):
         super().__init__()
         self.power = power
         self.delay_time = delay_time
+        self.do_print = do_print
+        self.print_kind = print_kind
     
     def initialize(self, **kwargs):
         layers_io: list[tuple[int,int]] = kwargs.get('layers_io')
@@ -56,18 +60,21 @@ class Adagrad(TrainOptimization):
         return_b = []
         for i in range(len(grad_w)):
             factor_w = np.power(self.s_w_tensor[i], self.power)
-            return_w.append(grad_w[i]*factor_w)
+            return_w.append(grad_w[i]/factor_w)
             factor_b = np.power(self.s_b_tensor[i], self.power)
-            return_b.append(grad_b[i]*factor_b)
-            # print(f"S weight {i} magnitude is {np.linalg.norm(self.s_w_tensor[i])}")
-            # print(f"Factor w {i} magnitude is {np.linalg.norm(factor_w)}")
-            # print(f"Return w {i} magnitude is {np.linalg.norm(return_w[i])}")
-            
-            
-            # print(f"S bias {i} magnitude is {np.linalg.norm(self.s_b_tensor[i])}")
-            # print(f"Factor b {i} magnitude is {np.linalg.norm(factor_b)}")
-            # print(f"Return b {i} magnitude is {np.linalg.norm(return_b[i])}")
-            # print()
+            return_b.append(grad_b[i]/factor_b)
+            if self.do_print[0] and t%self.do_print[1] == 0 and self.print_kind == "Full":
+                print(f"Grad w   {i} is {grad_w[i]}")
+                print(f"S weight {i} is {self.s_w_tensor[i]}")
+                print(f"Factor w {i} is {factor_w}")
+                print(f"Return w {i} is {return_w[i]}")
+                print(f"Grad b   {i} is {grad_b[i]}")
+                print(f"S bias   {i} is {self.s_b_tensor[i]}")
+                print(f"Factor b {i} is {factor_b}")
+                print(f"Return b {i} is {return_b[i]}")
+                print()
+                pass
+                
         
         # Não aplica no começo, para evitar explosão do gradiente
         if t > self.delay_time:

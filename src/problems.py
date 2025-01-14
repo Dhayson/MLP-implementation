@@ -4,6 +4,7 @@ from src.MLP import MLP, InitializationType
 from src.activation_functions import ReLU, Sigmoid, SigmoidBeforeCE, Linear
 from src.loss_functions import MSE, CrossEntropy, CrossEntropyAfterSigmoid
 from src.optimization import Adagrad
+import matplotlib.pyplot as plt
 
 def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Carregar o dataset
@@ -83,18 +84,28 @@ def classification_problem():
     
     # Define os hiperparâmetros da MLP
     # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid(), Adagrad(-0.25, 100))
+    
+    mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid(), Adagrad(0.5, 600, do_print=(False, 1200)))
     mlp.initialize(InitializationType.gaussian)
     loss = 9999
         
-    lr = 0.5
+    lr = 0.6
     n = 40
     while True:
-        loss, _ = mlp.eval(features_train, labels_train)
+        loss, train_acc = mlp.eval(features_train, labels_train, kind="Classification")
         print(loss)
         print(mlp.t)
-        if loss < 0.004:
+        # if loss < 0.0025:
+        #     break
+        _, val_acc = mlp.eval(features_val, labels_val, kind="Classification")
+        
+        if train_acc == val_acc and val_acc == 1.0:
+            print("SUCCESS")
+            print(mlp.weight_tensor)
+            print(mlp.bias_tensor)
+            print()
             break
+        
         for _i in range(300):
             loss = mlp.train(features_train, labels_train, sample="Minibatch", learning_rate=lr, n=n)
     train_loss, train_accuracy = mlp.eval(features_train, labels_train, kind="Classification")
@@ -131,24 +142,45 @@ def regression_problem():
     # Define os hiperparâmetros da MLP
     # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
     
-    # Foi utilizado -0.25, e não -0.5 como o valor que o resultado é exponenciado, para ter uma diminuição menos agressiva
-    # da taxa de aprendizado e, com isso, uma performance melhor
-    mlp = MLP(45, [10, 10], 1, [ReLU(), ReLU(), Linear()], MSE(), Adagrad(-0.25, 100))
+    mlp = MLP(45, [12, 12], 1, [ReLU(), ReLU(), Linear()], MSE(), Adagrad(0.5, 400, do_print=(False, 400)))
     mlp.initialize(InitializationType.gaussian)
-    loss = 9999
         
-    lr = 0.6
+    lr = 0.3
     batch_size = 40
+    
+    train_losses = []
+    val_losses = []
     while True:
-        loss, _ = mlp.eval(features_train, target_train)
-        print(loss)
-        print(mlp.t)
-        if loss < 0.0005:
+        train_loss, train_rmse, train_mae = mlp.eval(
+            features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
+        train_losses.append((mlp.t, train_loss))
+        
+        val_loss, val_rmse, val_mae = mlp.eval(
+            features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
+    
+        val_loss, _ = mlp.eval(features_val, target_val)
+        val_losses.append((mlp.t, val_loss))
+        if mlp.t % 200 == 0:
+            print(mlp.t)
+            print(f"train loss: {train_loss} train rmse: {train_rmse} train mae: {train_mae}")
+            print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")
+            print()
+        if train_loss < 0.001:
             break
-        for _i in range(100):
-            loss = mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=batch_size)
+        for _i in range(25):
+            mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=batch_size)
             
-    train_loss, train_rmse, train_mae = mlp.eval(features_train, target_train, kind="Regression", tmax=tmax, tmin=tmin)
+            
+    train_loss, train_rmse, train_mae = mlp.eval(features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
     print(f"train loss: {train_loss} train rmse: {train_rmse} train mae: {train_mae}")
-    val_loss, val_rmse, val_mae = mlp.eval(features_val, target_val, kind="Regression", tmax=tmax, tmin=tmin)
+    val_loss, val_rmse, val_mae = mlp.eval(features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
     print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")
+    
+    plt.plot([a for a,b in train_losses], [b for a,b in train_losses], label='train loss', color='blue')
+    plt.plot([a for a,b in val_losses], [b for a,b in val_losses], label='val loss', color='purple')
+    plt.yscale('log')
+    plt.xlabel('Iterações')
+    plt.ylabel('Loss: treino azul, validação roxo')
+    plt.show()
+    
+    

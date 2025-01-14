@@ -203,6 +203,7 @@ class MLP:
         dataset_sample = dataset.sample(n=n)
         expected_sample= expected.loc[dataset_sample.index]
         
+        # Calcula o gradiente médio da amostra
         total_gradient_w = []
         for i in range(len(self.weight_tensor)):
             total_gradient_w.append(np.zeros_like(self.weight_tensor[i], dtype='float64'))
@@ -225,7 +226,7 @@ class MLP:
         for i in range(len(self.bias_tensor)):
             total_gradient_b[i] /= n
         
-        
+        # Aplica a otimização
         if self.train_optimization == None:
             factor_w = total_gradient_w
             factor_b = total_gradient_b
@@ -237,11 +238,28 @@ class MLP:
         for i in range(len(self.bias_tensor)):
             self.bias_tensor[i] -= learning_rate*factor_b[i]
         
+        # Avança 1 iteração
         self.t += 1
         
         return total_loss
     
-    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None", tmax = None, tmin = None, do_print = False):
+    def eval(self, dataset: pd.DataFrame, expected: pd.DataFrame, kind="None", denormalize = False, tmax = None, tmin = None, do_print = False):
+        """Avalia o modelo em um determinado conjunto
+
+        Args:
+            dataset (pd.DataFrame): Features do conjunto a ser avaliado
+            expected (pd.DataFrame): Valores esperados
+            kind (str, optional): Regression ou Classification. Defaults to "None".
+            denormalize (bool, optional): Inverte a normalização. Defaults to False.
+            tmax (_type_, optional): Valores máximos antes da normalização. Defaults to None.
+            tmin (_type_, optional): Valores mínimos antes da normalização. Defaults to None.
+            do_print (bool, optional): Se o modelo realiza prints de debug. Defaults to False.
+
+        Returns:
+            Para classificação, retorna loss, accuracy
+            
+            Para regressão, retorna loss, rmse, e mae
+        """
         assert len(dataset) == len(expected)
         n = len(dataset)
         
@@ -265,8 +283,12 @@ class MLP:
                 classification_pred.append((np.argmax(output), i))
                 classification_exp.append(np.argmax(expected.loc[i].to_numpy()))
             if kind == "Regression":
-                regression_pred.append((output*(tmax-tmin) + tmin, i))
-                regression_exp.append(expected.loc[i].to_numpy()*(tmax-tmin) + tmin)
+                if denormalize:
+                    regression_pred.append((output*(tmax-tmin) + tmin, i))
+                    regression_exp.append(expected.loc[i].to_numpy()*(tmax-tmin) + tmin)
+                else:
+                    regression_pred.append((output, i))
+                    regression_exp.append(expected.loc[i].to_numpy())
             train_loss += self.loss.loss(output, expected.loc[i])
         
         n_wrong = 0
@@ -302,12 +324,3 @@ class MLP:
             return train_loss, rmse, mae
         else:
             return train_loss, None
-
-        
-         
-        
-            
-        
-        
-    
-        
