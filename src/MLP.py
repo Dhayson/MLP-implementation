@@ -319,7 +319,7 @@ class MLP:
             accuracy = (n-n_wrong)/n
             return train_loss, accuracy
         elif kind == "Regression":
-            rmse = sqrt(rmse.iloc[0]/n)
+            rmse = sqrt(rmse.sum()/n)
             mae = mae/n
             return train_loss, rmse, mae
         else:
