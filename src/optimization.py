@@ -21,7 +21,7 @@ class Adagrad(TrainOptimization):
     do_print: tuple[bool, int]
     print_kind: str
     
-    def __init__(self, power = -0.5, delay_time = 100, do_print = (False, 100), print_kind = "Full"):
+    def __init__(self, power = 0.5, delay_time = 100, do_print = (False, 100), print_kind = "Full"):
         super().__init__()
         self.power = power
         self.delay_time = delay_time
