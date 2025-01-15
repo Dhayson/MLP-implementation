@@ -1,9 +1,6 @@
 import numpy as np
 import pandas as pd
-from src.MLP import MLP, InitializationType
-from src.activation_functions import ReLU, Sigmoid, SigmoidBeforeCE, Linear
-from src.loss_functions import MSE, CrossEntropy, CrossEntropyAfterSigmoid
-from src.optimization import Adagrad
+from src.MLP import MLP
 import matplotlib.pyplot as plt
 
 def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -23,9 +20,13 @@ def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     return features, labels
 
-def load_student_dataset() -> pd.DataFrame:
+def load_student_dataset(subject: str) -> pd.DataFrame:
     # Carregar o dataset
-    data = pd.read_csv("dataset_students/student-mat.csv", sep=";")
+    if subject == "Mat":
+        data = pd.read_csv("dataset_students/student-mat.csv", sep=";")
+    elif subject == "Por":
+        data = pd.read_csv("dataset_students/student-por.csv", sep=";")
+        
     data["school"] = data["school"].map({"GP":1, "MS":0})
     data["sex"] = data["sex"].map({"F":1, "M":0})
     data["address"] = data["address"].map({"U":1, "R":0})
@@ -69,10 +70,19 @@ def load_student_dataset() -> pd.DataFrame:
     
     return data
 
-def classification_problem():
+def classification_problem(
+    mlp: MLP, 
+    lr: float, 
+    gradient_type: tuple[str, int],
+    train_loss_stop: float,
+    show_each_n_steps = 144,
+    detail = 12
+):
+    # Carregar dataset
     features, labels = load_iris_dataset()
-    normalized = True
     
+    # Normalização
+    normalized = True
     if normalized:
         features=(features-features.min())/(features.max()-features.min())
         
@@ -82,54 +92,78 @@ def classification_problem():
     features_val = features.drop(features_train.index)
     labels_val = labels.loc[features_val.index]
     
-    # Define os hiperparâmetros da MLP
-    # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    
-    mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid(), Adagrad(0.5, 600, do_print=(False, 1200)))
-    mlp.initialize(InitializationType.gaussian)
-    loss = 9999
-        
-    lr = 0.6
-    n = 40
+    train_losses_t = []
+    train_accs_t = []
+    val_losses_t = []
+    val_accs_t = []
     while True:
-        loss, train_acc = mlp.eval(features_train, labels_train, kind="Classification")
-        print(loss)
-        print(mlp.t)
-        # if loss < 0.0025:
-        #     break
-        _, val_acc = mlp.eval(features_val, labels_val, kind="Classification")
+        train_loss, train_acc = mlp.eval(features_train, labels_train, kind="Classification")
+        train_losses_t.append((mlp.t, train_loss))
+        train_accs_t.append((mlp.t, train_acc))
         
-        if train_acc == val_acc and val_acc == 1.0:
-            print("SUCCESS")
-            print(mlp.weight_tensor)
-            print(mlp.bias_tensor)
-            print()
+        val_loss, val_acc = mlp.eval(features_val, labels_val, kind="Classification")
+        val_losses_t.append((mlp.t, val_loss))
+        val_accs_t.append((mlp.t, val_acc))
+        
+        
+        if show_each_n_steps != -1 and mlp.t % show_each_n_steps == 0:
+            print(f"t = {mlp.t}")
+            print(f"train loss: {train_loss} train_acc: {train_acc}")
+            print(f"val loss: {train_loss} val_acc: {val_acc}")
+        
+        if train_loss < train_loss_stop:
             break
         
-        for _i in range(300):
-            loss = mlp.train(features_train, labels_train, sample="Minibatch", learning_rate=lr, n=n)
+        for _i in range(detail):
+            train_loss = mlp.train(features_train, labels_train, sample=gradient_type[0], learning_rate=lr, n=gradient_type[1])
+            
     train_loss, train_accuracy = mlp.eval(features_train, labels_train, kind="Classification")
     print(f"train loss: {train_loss} train accuracy: {train_accuracy}")
     val_loss, val_accuracy = mlp.eval(features_val, labels_val, kind="Classification")
     print(f"val loss: {val_loss} val accuracy: {val_accuracy}")
-    if train_accuracy == val_accuracy and val_accuracy == 1.0:
+    
+    f1 = plt.figure(1)
+    plt.yscale('log')
+    plt.plot([a for a,b in train_losses_t], [b for a,b in train_losses_t], label='train loss', color='blue')
+    plt.plot([a for a,b in val_losses_t], [b for a,b in val_losses_t], label='val loss', color='purple')
+    plt.xlabel('Iterações')
+    plt.ylabel('Loss: treino azul, validação roxo')
+    
+    f2 = plt.figure(2)
+    plt.plot([a for a,b in train_accs_t], [b for a,b in train_accs_t], label='train loss', color='blue')
+    plt.plot([a for a,b in val_accs_t], [b for a,b in val_accs_t], label='val loss', color='purple')
+    plt.xlabel('Iterações')
+    plt.ylabel('Acurácia: treino azul, validação roxo')
+    
+    plt.show()
+    
+    if train_accuracy == 1.0 and val_accuracy == 1.0 and show_each_n_steps != -1:
         print()
         print(mlp.weight_tensor)
         print(mlp.bias_tensor)
 
     
-def regression_problem():
-    dataset = load_student_dataset()
-    set_target = ["G3"]
+def regression_problem(
+    mlp: MLP, 
+    lr: float, 
+    gradient_type: tuple[str, int], 
+    subject: str,
+    train_loss_stop: float,
+    set_target = ["G3"],
+    show_each_n_steps = 200,
+    detail = 25
+):
+    # Carregar dataset
+    dataset = load_student_dataset(subject)
     
-    
+    # Normalização
     tmax = dataset[set_target].max()
     tmin  = dataset[set_target].min()
     normalized = True
     if normalized:
         dataset=(dataset-dataset.min())/(dataset.max()-dataset.min())
-        
     
+    # Divisão entre target e features
     target = dataset[set_target]
     features = dataset.drop(set_target, axis=1)
     
@@ -139,36 +173,38 @@ def regression_problem():
     features_val = features.drop(features_train.index)
     target_val = target.loc[features_val.index]
     
-    # Define os hiperparâmetros da MLP
-    # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
-    
-    mlp = MLP(45, [12, 12], 1, [ReLU(), ReLU(), Linear()], MSE(), Adagrad(0.5, 400, do_print=(False, 400)))
-    mlp.initialize(InitializationType.gaussian)
-        
-    lr = 0.3
-    batch_size = 40
-    
-    train_losses = []
-    val_losses = []
+    train_losses_t = []
+    train_rmse_t = []
+    train_mae_t = []
+    val_losses_t = []
+    val_rmse_t = []
+    val_mae_t = []
     while True:
         train_loss, train_rmse, train_mae = mlp.eval(
             features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
-        train_losses.append((mlp.t, train_loss))
+        train_losses_t.append((mlp.t, train_loss))
+        train_rmse_t.append((mlp.t, train_rmse))
+        train_mae_t.append((mlp.t, train_mae))
         
         val_loss, val_rmse, val_mae = mlp.eval(
             features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
     
         val_loss, _ = mlp.eval(features_val, target_val)
-        val_losses.append((mlp.t, val_loss))
-        if mlp.t % 200 == 0:
-            print(mlp.t)
+        val_losses_t.append((mlp.t, val_loss))
+        val_rmse_t.append((mlp.t, val_rmse))
+        val_mae_t.append((mlp.t, val_mae))
+        
+        if show_each_n_steps != -1 and mlp.t % show_each_n_steps == 0:
+            print(f"t = {mlp.t}")
             print(f"train loss: {train_loss} train rmse: {train_rmse} train mae: {train_mae}")
             print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")
             print()
-        if train_loss < 0.001:
+            
+        if train_loss < train_loss_stop:
             break
-        for _i in range(25):
-            mlp.train(features_train, target_train, sample="Minibatch", learning_rate=lr, n=batch_size)
+        
+        for _i in range(detail):
+            mlp.train(features_train, target_train, sample=gradient_type[0], learning_rate=lr, n=gradient_type[1])
             
             
     train_loss, train_rmse, train_mae = mlp.eval(features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
@@ -176,11 +212,37 @@ def regression_problem():
     val_loss, val_rmse, val_mae = mlp.eval(features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
     print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")
     
-    plt.plot([a for a,b in train_losses], [b for a,b in train_losses], label='train loss', color='blue')
-    plt.plot([a for a,b in val_losses], [b for a,b in val_losses], label='val loss', color='purple')
+
+    f1 = plt.figure(1)
     plt.yscale('log')
+    plt.plot([a for a,b in train_rmse_t], [b for a,b in train_rmse_t], label='train rmse', color='blue')
+    plt.plot([a for a,b in val_rmse_t], [b for a,b in val_rmse_t], label='val rmse', color='purple')
     plt.xlabel('Iterações')
-    plt.ylabel('Loss: treino azul, validação roxo')
+    plt.ylabel('RMSE: treino azul, validação roxo')
+    
+    f2 = plt.figure(2)
+    plt.yscale('log')
+    if len(set_target) == 1:
+        plt.plot([a for a,b in train_mae_t], [b for a,b in train_mae_t], label='train mae', color='blue')
+        plt.plot([a for a,b in val_mae_t], [b for a,b in val_mae_t], label='val mae', color='purple')
+        plt.xlabel('Iterações')
+        plt.ylabel('MAE: treino azul, validação roxo')
+    elif len(set_target) == 2:
+        plt.plot([a for a,b in train_mae_t], [c for c,d in [b for a,b in train_mae_t]], label='train mae', color='blue')
+        plt.plot([a for a,b in train_mae_t], [d for c,d in [b for a,b in train_mae_t]], label='train mae', color='green')
+        plt.plot([a for a,b in val_mae_t], [c for c,d in [b for a,b in val_mae_t]], label='val mae', color='purple')
+        plt.plot([a for a,b in val_mae_t], [d for c,d in [b for a,b in val_mae_t]], label='val mae', color='red')
+        plt.xlabel('Iterações')
+        plt.ylabel('MAE: treino azul(G2) e verde(G3)\nvalidação roxo(G2) e vermelho(G3)')
+    elif len(set_target) == 3:
+        plt.plot([a for a,b in train_mae_t], [c for c,d,e in [b for a,b in train_mae_t]], label='train mae', color='blue')
+        plt.plot([a for a,b in train_mae_t], [d for c,d,e in [b for a,b in train_mae_t]], label='train mae', color='green')
+        plt.plot([a for a,b in train_mae_t], [e for c,d,e in [b for a,b in train_mae_t]], label='train mae', color='teal')
+        plt.plot([a for a,b in val_mae_t], [c for c,d,e in [b for a,b in val_mae_t]], label='val mae', color='purple')
+        plt.plot([a for a,b in val_mae_t], [d for c,d,e in [b for a,b in val_mae_t]], label='val mae', color='red')
+        plt.plot([a for a,b in val_mae_t], [e for c,d,e in [b for a,b in val_mae_t]], label='val mae', color='magenta')
+        plt.xlabel('Iterações')
+        plt.ylabel('MAE: treino azul(G1), verde(G2) e azul-petróleo(G3)\nvalidação roxo(G1), vermelho(G2) e magenta(G3)')
     plt.show()
     
     
