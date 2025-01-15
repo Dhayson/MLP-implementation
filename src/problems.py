@@ -75,6 +75,7 @@ def classification_problem(
     lr: float, 
     gradient_type: tuple[str, int],
     train_loss_stop: float,
+    max_iterations = 9999999999,
     show_each_n_steps = 144,
     detail = 12
 ):
@@ -111,7 +112,7 @@ def classification_problem(
             print(f"train loss: {train_loss} train_acc: {train_acc}")
             print(f"val loss: {train_loss} val_acc: {val_acc}")
         
-        if train_loss < train_loss_stop:
+        if train_loss < train_loss_stop or mlp.t >= max_iterations:
             break
         
         for _i in range(detail):
@@ -149,6 +150,7 @@ def regression_problem(
     gradient_type: tuple[str, int], 
     subject: str,
     train_loss_stop: float,
+    max_iterations = 9999999999,
     set_target = ["G3"],
     show_each_n_steps = 200,
     detail = 25
@@ -200,7 +202,7 @@ def regression_problem(
             print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")
             print()
             
-        if train_loss < train_loss_stop:
+        if train_loss < train_loss_stop or mlp.t >= max_iterations:
             break
         
         for _i in range(detail):

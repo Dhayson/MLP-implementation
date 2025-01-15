@@ -14,6 +14,7 @@ def main():
             lr = 0.5,
             gradient_type=("Minibatch", 30),
             train_loss_stop = 0.15,
+            max_iterations=10000,
             show_each_n_steps=200,
             detail=4
         )
@@ -28,6 +29,7 @@ def main():
             gradient_type=("Minibatch", 40),
             subject="Por",
             train_loss_stop=0.01,
+            max_iterations=15000,
             set_target=["G1", "G2", "G3"],
             detail=25
         )
