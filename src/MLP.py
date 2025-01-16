@@ -6,10 +6,7 @@ from collections.abc import Callable
 from src.activation_functions import ActivationFunction
 from src.loss_functions import LossFunction, MSE
 from src.optimization import TrainOptimization
-
-class InitializationType(Enum):
-    zero = 0
-    gaussian = 1
+from src.initialization import WeightInitialization
 
 class MLP:
     weight_tensor: list[np.ndarray]
@@ -56,14 +53,13 @@ class MLP:
         assert self.depth == len(self.activations)
         
     
-    def initialize(self, initialization_type: InitializationType = InitializationType.gaussian):
+    def initialize(self, initialization_type: WeightInitialization):
         """Inicializa um MLP, definindo seus pesos e bias iniciais
         """
         self.weight_tensor = []
         for input, output in self.layers_io:
             neuron_weight = np.zeros(shape=(input, output), dtype='float64')
-            if initialization_type == InitializationType.gaussian:
-                neuron_weight = np.random.normal(loc = 0, scale=sqrt(2/(input+output)), size=(input, output))
+            neuron_weight = initialization_type.gen_weights(input, output)
             self.weight_tensor.append(neuron_weight)
             
         self.bias_tensor = []
