@@ -2,30 +2,29 @@ import numpy as np
 import pandas as pd
 from src.MLP import MLP
 import matplotlib.pyplot as plt
+from ucimlrepo import fetch_ucirepo
 
 def load_iris_dataset(normalized = True) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Carregar o dataset
-    data = np.genfromtxt("dataset_iris/bezdekIris.data", delimiter=',', dtype=None, encoding='utf-8')
-    features = []
-    labels = []
-    for i1, i2, i3, i4, label in data:
-        features.append([i1, i2, i3, i4])
-        labels.append(label)
-    features=pd.DataFrame(features)
-    labels=pd.DataFrame(labels)
-    labels["Iris-setosa"] = labels[0].map({"Iris-setosa": 1.0, "Iris-versicolor": 0.0, "Iris-virginica": 0.0})
-    labels["Iris-versicolor"] = labels[0].map({"Iris-setosa": 0.0, "Iris-versicolor": 1.0, "Iris-virginica": 0.0})
-    labels["Iris-virginica"] = labels[0].map({"Iris-setosa": 0.0, "Iris-versicolor": 0.0, "Iris-virginica": 1.0})
-    labels = labels.drop(labels=0, axis=1)
+    iris = fetch_ucirepo(id=53) 
+    features = iris.data.features
+    labels: pd.DataFrame = iris.data.targets
+    pd.options.mode.copy_on_write = True
+    labels["Iris-setosa"] = labels['class'].map({"Iris-setosa": 1.0, "Iris-versicolor": 0.0, "Iris-virginica": 0.0})
+    labels["Iris-versicolor"] = labels['class'].map({"Iris-setosa": 0.0, "Iris-versicolor": 1.0, "Iris-virginica": 0.0})
+    labels["Iris-virginica"] = labels['class'].map({"Iris-setosa": 0.0, "Iris-versicolor": 0.0, "Iris-virginica": 1.0})
+    labels = labels.drop(labels='class', axis=1)
 
     return features, labels
 
-def load_student_dataset(subject: str) -> pd.DataFrame:
+def load_student_dataset(subject: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Carregar o dataset
     if subject == "Mat":
         data = pd.read_csv("dataset_students/student-mat.csv", sep=";")
     elif subject == "Por":
-        data = pd.read_csv("dataset_students/student-por.csv", sep=";")
+        # O do ucirepo é apenas português
+        student_performance = fetch_ucirepo(id=320)
+        data: pd.DataFrame = student_performance.data.original
         
     data["school"] = data["school"].map({"GP":1, "MS":0})
     data["sex"] = data["sex"].map({"F":1, "M":0})
