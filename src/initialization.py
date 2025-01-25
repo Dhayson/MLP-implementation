@@ -22,4 +22,4 @@ class ZeroInitialization(WeightInitialization):
 # Inicialização uniforme
 class UniformInitialization(WeightInitialization):
     def gen_weights(self, input_dim, output_dim):
-        return np.random.uniform(low = -sqrt(6/(input_dim+output_dim)), high=sqrt(6/(input_dim+output_dim)), shape=(input_dim, output_dim), dtype='float64')
+        return np.random.uniform(low = -sqrt(6/(input_dim+output_dim)), high=sqrt(6/(input_dim+output_dim)), size=(input_dim, output_dim), dtype='float64')
