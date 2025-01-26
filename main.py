@@ -1,4 +1,5 @@
 from src.problems import classification_problem, regression_problem
+from src_torch.problems import classification_problem_torch
 from src.MLP import MLP
 from src.activation_functions import *
 from src.loss_functions import *
@@ -8,7 +9,7 @@ import sys
 
 def main():
     if sys.argv[1] == "Classification":
-        mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), SigmoidBeforeCE()], CrossEntropyAfterSigmoid(), Adagrad(0.5, 600, do_print=(False, 1200)))
+        mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), Sigmoid()], CrossEntropy(), Adagrad(0.5, 600, do_print=(False, 1200)))
         mlp.initialize(GaussianInitialization())
         classification_problem(
             mlp,
@@ -34,6 +35,40 @@ def main():
             set_target=["G1", "G2", "G3"],
             detail=25
         )
+    elif sys.argv[1] == "ClassificationTorch":
+        import torch
+        from torch import nn
+        from torch.optim import adagrad
+        import src_torch.loss_functions
+        
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        mlp = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.ReLU(),
+            nn.Linear(4, 4),
+            nn.Sigmoid(),
+            nn.Linear(4, 3),
+            nn.Sigmoid()
+        ).to(device)
+        def _init_weights(module):
+            if isinstance(module, nn.Linear):
+                module.weight.data.normal_(mean=0.0, std=1.0)
+                if module.bias is not None:
+                    module.bias.data.zero_()
+        mlp.apply(_init_weights)
+        optimizer_mlp = adagrad.Adagrad(mlp.parameters(), lr = 0.05)
+        classification_problem_torch(
+            mlp,
+            optimizer_mlp,
+            src_torch.loss_functions.CrossEntropy(),
+            gradient_type=("Minibatch", 30),
+            train_loss_stop=0.0,
+            max_iterations=5000,
+            show_each_n_steps=200,
+            detail=1,
+            device=device
+        )
+        
 
 if __name__ == "__main__":
     main()
