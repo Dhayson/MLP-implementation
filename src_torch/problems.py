@@ -106,11 +106,11 @@ def classification_problem_torch(
     while True:
         mlp.eval()
         train_loss, train_acc = eval_model(mlp, loss, features_train, labels_train, kind="Classification", device=device)
-        train_losses_t.append((t, train_loss.detach()))
+        train_losses_t.append((t, train_loss.detach().cpu()))
         train_accs_t.append((t, train_acc))
         
         val_loss, val_acc = eval_model(mlp, loss, features_val, labels_val, kind="Classification", device=device)
-        val_losses_t.append((t, val_loss.detach()))
+        val_losses_t.append((t, val_loss.detach().cpu()))
         val_accs_t.append((t, val_acc))
         
         

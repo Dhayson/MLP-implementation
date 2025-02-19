@@ -14,31 +14,32 @@ import src_torch.loss_functions
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if sys.argv[1] == "Classification":
-        mlp = MLP(4, [4, 4], 3, [ReLU(), Sigmoid(), Sigmoid()], CrossEntropy(), Adagrad(0.5, 600, do_print=(False, 1200)))
+        mlp = MLP(4, [4, 4], 3, [ReLU(), ReLU(), Sigmoid()], CrossEntropy(), Adagrad(0.05, 0, do_print=(False, 1200)))
         mlp.initialize(GaussianInitialization())
         classification_problem(
             mlp,
             lr = 0.5,
             gradient_type=("Minibatch", 30),
-            train_loss_stop = 0.15,
-            max_iterations=10000,
-            show_each_n_steps=200,
-            detail=4
+            train_loss_stop = 0.0,
+            max_iterations = 1000,
+            show_each_n_steps=25,
+            detail = 1
         )
         
     elif sys.argv[1] == "Regression":
-        mlp = MLP(43, [12, 12], 3, [ReLU(), ReLU(), Linear()], MSE(), Adagrad(0.5, 400, do_print=(False, 400)))
+        mlp = MLP(45, [12, 12], 1, [ReLU(), ReLU(), Linear()], MSE(), Adagrad(0.5, 0, do_print=(False, 400)))
         mlp.initialize(GaussianInitialization())
         regression_problem(
             # Define os hiperparâmetros da MLP
             # A MLP é capaz de ter um número M de camadas, cada uma com sua própria dimensão e função de ativação
             mlp,
-            lr = 0.3,
+            lr = 0.01,
             gradient_type=("Minibatch", 40),
             subject="Por",
-            train_loss_stop=0.01,
+            train_loss_stop=0.00,
             max_iterations=3000,
-            set_target=["G1", "G2", "G3"],
+            show_each_n_steps=100,
+            set_target=["G3"],
             detail=25
         )
         
@@ -47,7 +48,7 @@ def main():
             nn.Linear(4, 4),
             nn.ReLU(),
             nn.Linear(4, 4),
-            nn.Sigmoid(),
+            nn.ReLU(),
             nn.Linear(4, 3),
             nn.Sigmoid()
         ).to(device)
@@ -64,8 +65,8 @@ def main():
             src_torch.loss_functions.CrossEntropy(),
             gradient_type=("Minibatch", 30),
             train_loss_stop=0.0,
-            max_iterations=5000,
-            show_each_n_steps=200,
+            max_iterations=1000,
+            show_each_n_steps=25,
             detail=1,
             device=device
         )
@@ -93,7 +94,8 @@ def main():
             subject="Por",
             train_loss_stop=0.0,
             device=device,
-            max_iterations=30000,
+            max_iterations=3000,
+            show_each_n_steps=100,
             set_target=["G3"],
             detail=25
         )
