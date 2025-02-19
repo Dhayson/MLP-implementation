@@ -99,7 +99,7 @@ def eval_model(
     
     regression_pred = []
     regression_exp = []
-    
+
     outputs = mlp(dataset_tensor)
     for i in dataset.index:
         if kind == "Classification":
@@ -107,12 +107,13 @@ def eval_model(
             classification_exp.append(np.argmax(expected.loc[i].to_numpy()))
         if kind == "Regression":
             if denormalize:
-                regression_pred.append((outputs[i].cpu().detach()*(tmax-tmin) + tmin, i))
+                output_i = outputs[i].cpu().detach().numpy()
+                regression_pred.append((output_i*(tmax-tmin) + tmin, i))
                 regression_exp.append(expected.loc[i].to_numpy()*(tmax-tmin) + tmin)
             else:
                 regression_pred.append((outputs[i], i))
                 regression_exp.append(expected.loc[i].to_numpy())
-        train_loss += loss_f.loss(outputs[i], expected_tensor[i], device)
+        train_loss = train_loss + loss_f.loss(outputs[i], expected_tensor[i], device)
     
     n_wrong = 0
     if kind == "Classification":

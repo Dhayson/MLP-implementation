@@ -155,10 +155,12 @@ def classification_problem_torch(
     
 def regression_problem_torch(
     mlp: nn.Module, 
-    lr: float, 
+    optimizer: torch.optim.Adagrad,
+    loss: LossFunction,
     gradient_type: tuple[str, int], 
     subject: str,
     train_loss_stop: float,
+    device: torch.device,
     max_iterations = 9999999999,
     set_target = ["G3"],
     show_each_n_steps = 200,
@@ -193,16 +195,16 @@ def regression_problem_torch(
     
     t = 0
     while True:
-        train_loss, train_rmse, train_mae = mlp.eval(
-            features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
+        mlp.eval()
+        train_loss, train_rmse, train_mae = eval_model(
+            mlp, loss, features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin, device=device)
         train_losses_t.append((t, train_loss))
         train_rmse_t.append((t, train_rmse))
         train_mae_t.append((t, train_mae))
         
-        val_loss, val_rmse, val_mae = mlp.eval(
-            features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
-    
-        val_loss, _ = mlp.eval(features_val, target_val)
+        val_loss, val_rmse, val_mae = eval_model(
+            mlp, loss, features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin, device=device)
+        
         val_losses_t.append((t, val_loss))
         val_rmse_t.append((t, val_rmse))
         val_mae_t.append((t, val_mae))
@@ -216,14 +218,16 @@ def regression_problem_torch(
         if train_loss < train_loss_stop or t >= max_iterations:
             break
         
+        mlp.train()
         for _i in range(detail):
-            mlp.train(features_train, target_train, sample=gradient_type[0], learning_rate=lr, n=gradient_type[1])
+            train_model(
+                mlp, loss, optimizer, features_train, target_train, sample=gradient_type[0], n=gradient_type[1], device=device)
             t += 1
             
             
-    train_loss, train_rmse, train_mae = mlp.eval(features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
+    train_loss, train_rmse, train_mae = eval_model(mlp, loss, features_train, target_train, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin, device=device)
     print(f"train loss: {train_loss} train rmse: {train_rmse} train mae: {train_mae}")
-    val_loss, val_rmse, val_mae = mlp.eval(features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin)
+    val_loss, val_rmse, val_mae = eval_model(mlp, loss, features_val, target_val, kind="Regression", denormalize=True, tmax=tmax, tmin=tmin, device=device)
     print(f"val loss: {val_loss} val rmse: {val_rmse} val mae: {val_mae}")
     
 
