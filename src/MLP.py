@@ -1,8 +1,6 @@
 import numpy as np
 import pandas as pd
 from math import sqrt
-from enum import Enum
-from collections.abc import Callable
 from src.activation_functions import ActivationFunction
 from src.loss_functions import LossFunction, MSE
 from src.optimization import TrainOptimization
